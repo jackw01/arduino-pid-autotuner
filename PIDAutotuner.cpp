@@ -21,6 +21,18 @@ void PIDAutotuner::setLoopInterval(long interval) {
     loopInterval = interval;
 }
 
+// Set output range
+void PIDAutotuner::setOutputRange(double min, double max) {
+
+    minOutput = min;
+    maxOutput = max;
+}
+
+// Set Ziegler-Nichols tuning mode
+void PIDAutotuner::setZNMode(byte zn) {
+
+    znMode = zn;
+}
 
 // Set tuning cycles
 void PIDAutotuner::setTuningCycles(int tuneCycles) {
@@ -31,24 +43,38 @@ void PIDAutotuner::setTuningCycles(int tuneCycles) {
 // Start loop
 void PIDAutotuner::startTuningLoop() {
 
-    i = 0;
-    output = true;
-    t1 = t2 = micros();
-    microseconds = tHigh = tLow = 0;
-    max = -1000000;
-    min = 1000000;
+    // Initialize all variables before loop
+    i = 0; // Cycle counter
+    output = true; // Current output state
+    outputValue = maxOutput;
+    t1 = t2 = micros(); // Times used for calculating period
+    microseconds = tHigh = tLow = 0; // More time variables
+    max = -1000000; // Max input
+    min = 1000000; // Min input
     pAverage = iAverage = dAverage = 0;
 
     sei();
 }
 
 // Run one cycle of the loop
-bool PIDAutotuner::tunePID(double input) {
+double PIDAutotuner::tunePID(double input) {
 
     // Useful information on the algorithm used (Ziegler-Nichols method/Relay method)
     // http://www.processcontrolstuff.net/wp-content/uploads/2015/02/relay_autot-2.pdf
     // https://en.wikipedia.org/wiki/Ziegler%E2%80%93Nichols_method
     // https://www.cds.caltech.edu/~murray/courses/cds101/fa04/caltech/am04_ch8-3nov04.pdf
+
+    // Basic explanation of how this works:
+    //  * Turn on the output of the PID controller to full power
+    //  * Wait for the output of the system being tuned to reach the target input value
+    //      and then turn the controller output off
+    //  * Wait for the output of the system being tuned to decrease below the target input
+    //      value and turn the controller output back on
+    //  * Do this a lot
+    //  * Calculate the ultimate gain using the amplitude of the controller output and
+    //      system output
+    //  * Use this and the period of oscillation to calculate PID gains using the
+    //      Ziegler-Nichols method
 
     // Calculate time delta
     long prevMicroseconds = microseconds;
@@ -62,7 +88,9 @@ bool PIDAutotuner::tunePID(double input) {
     // Output is on and input signal has risen to target
     if (output && input > targetInputValue) {
 
+        // Turn output off, record current time as t1, calculate tHigh, and reset maximum
         output = false;
+        outputValue = minOutput;
         t1 = micros();
         tHigh = t1 - t2;
         max = targetInputValue;
@@ -71,11 +99,19 @@ bool PIDAutotuner::tunePID(double input) {
     // Output is off and input signal has dropped to target
     if (!output && input < targetInputValue) {
 
+        // Turn output on, record current time as t2, calculate tLow
         output = true;
+        outputValue = maxOutput;
         t2 = micros();
         tLow = t2 - t1;
 
-        double ku = (4.0 * 0.5) / (M_PI * (max - min) * 2.0);
+        // Calculate Ku (ultimate gain)
+        // Formula given is Ku = 4d / πa
+        // d is the amplitude of the output signal
+        // a is the amplitude of the input signal
+        double ku = (4.0 * ((maxOutput - minOutput) / 2.0)) / (M_PI * (max - min) * 2.0);
+
+        // Calculate Tu (period of output oscillations)
         double tu = tLow + tHigh;
 
         // How gains are calculated
@@ -89,46 +125,73 @@ bool PIDAutotuner::tunePID(double input) {
         // Solving these equations for Kp, Ki, and Kd gives this:
         //
         // Kp = 0.6Ku
-        // Ki = Kp / (0.5Tu) =
+        // Ki = Kp / (0.5Tu)
         // Kd = 0.125 * Kp * Tu
 
         // Constants
         // https://en.wikipedia.org/wiki/Ziegler%E2%80%93Nichols_method
 
+        double kpConstant, tiConstant, tdConstant;
+
+        if (znMode == znModeBasicPID) {
+
+            kpConstant = 0.6;
+            tiConstant = 0.5;
+            tdConstant = 0.125;
+
+        } else if (znMode == znModeLessOvershoot) {
+
+            kpConstant = 0.33;
+            tiConstant = 0.5;
+            tdConstant = 0.33;
+
+        } else if (znMode == znModeNoOvershoot) {
+
+            kpConstant = 0.2;
+            tiConstant = 0.5;
+            tdConstant = 0.33;
+        }
+
         // Normal PID
         //double pConstant = 0.6, iConstant = 0.5, dConstant = 0.125;
 
         // Less overshoot
-        double pConstant = 0.33, iConstant = 0.5, dConstant = 0.33;
+        //double pConstant = 0.33, iConstant = 0.5, dConstant = 0.33;
 
         // No overshoot
         //double pConstant = 0.2, iConstant = 0.5, dConstant = 0.33;
 
-        kp = pConstant * ku;
-        ki = (kp / (iConstant * tu)) * loopInterval;
-        kd = (dConstant * kp * tu) / loopInterval;
+        // Calculate gains
+        kp = kpConstant * ku;
+        ki = (kp / (tiConstant * tu)) * loopInterval;
+        kd = (tdConstant * kp * tu) / loopInterval;
 
+        // Average all gains after the first two cycles
         if (i > 1) {
             pAverage += kp;
             iAverage += ki;
             dAverage += kd;
         }
 
+        // Reset minimum
         min = targetInputValue;
 
+        // Increment cycle count
         i ++;
     }
 
+    // If loop is done, disable output and calculate averages
     if (i >= cycles) {
 
         output = false;
+        outputValue = minOutput;
 
         kp = pAverage / (cycles - 2);
         ki = iAverage / (cycles - 2);
         kd = dAverage / (cycles - 2);
     }
 
-    return output;
+    return outputValue;
 }
 
 // Get PID constants after tuning
@@ -141,119 +204,3 @@ bool PIDAutotuner::isFinished() {
 
     return (i >= cycles);
 }
-
-// Automatically tune PID
-/*
-void PIDAutotuner::tunePID2(double targetInputValue, int cycles, long loopInterval) {
-
-    // Useful information on the algorithm used (Ziegler-Nichols method/Relay method)
-    // http://www.processcontrolstuff.net/wp-content/uploads/2015/02/relay_autot-2.pdf
-    // https://en.wikipedia.org/wiki/Ziegler%E2%80%93Nichols_method
-    // https://www.cds.caltech.edu/~murray/courses/cds101/fa04/caltech/am04_ch8-3nov04.pdf
-
-    double input = 0;
-    int i = 0;
-    bool outputOn = true;
-
-    long microseconds;
-    long t1 = micros(), t2 = t1;
-    long tHigh = 0, tLow = 0;
-
-    double max = -1000000, min = 1000000;
-    double pAverage = 0, iAverage = 0, dAverage = 0;
-
-    sei();
-    //driveMotorController.setSpeed(1.0, TB6612::tb6612ChannelA);
-
-    while (true) {
-
-        // Calculate time delta
-        long prevMicroseconds = microseconds;
-        microseconds = micros();
-        double deltaT = microseconds - prevMicroseconds;
-
-        // Get input
-        //input = inputSource.getValue();
-
-        max = max(max, input);
-        min = min(min, input);
-
-        if (outputOn && input > targetInputValue) {
-
-            outputOn = false;
-            //driveMotorController.setSpeed(0.0, TB6612::tb6612ChannelA);
-
-            t1 = micros();
-            tHigh = t1 - t2;
-
-            max = targetInputValue;
-        }
-
-        if (!outputOn && input < targetInputValue) {
-
-            outputOn = true;
-            //driveMotorController.setSpeed(1.0, TB6612::tb6612ChannelA);
-
-            t2 = micros();
-            tLow = t2 - t1;
-
-            double ku = (4.0 * 0.5) / (M_PI * (max - min) * 2.0);
-            double tu = tLow + tHigh;
-
-            // How gains are calculated
-            // PID control algorithm needs Kp, Ki, and Kd
-            // Ziegler-Nichols tuning method gives Kp, Ti, and Td
-            //
-            // Kp = 0.6Ku = Kc
-            // Ti = 0.5Tu = Kc/Ki
-            // Td = 0.125Tu = Kd/Kc
-            //
-            // Solving these equations for Kp, Ki, and Kd gives this:
-            //
-            // Kp = 0.6Ku
-            // Ki = Kp / (0.5Tu) =
-            // Kd = 0.125 * Kp * Tu
-
-            // Constants
-            // https://en.wikipedia.org/wiki/Ziegler%E2%80%93Nichols_method
-
-            // Normal PID
-            //double pConstant = 0.6, iConstant = 0.5, dConstant = 0.125;
-
-            // Less overshoot
-            double pConstant = 0.33, iConstant = 0.5, dConstant = 0.33;
-
-            // No overshoot
-            //double pConstant = 0.2, iConstant = 0.5, dConstant = 0.33;
-
-            kp = pConstant * ku;
-            ki = (kp / (iConstant * tu)) * loopInterval;
-            kd = (dConstant * kp * tu) / loopInterval;
-
-            if (i > 1) {
-                pAverage += kp;
-                iAverage += ki;
-                dAverage += kd;
-            }
-
-            min = targetInputValue;
-
-            i ++;
-        }
-
-        if (i >= cycles) {
-
-            //driveMotorController.setSpeed(0.0, TB6612::tb6612ChannelA);
-            outputOn = false;
-
-            kp = pAverage / (cycles - 2);
-            ki = iAverage / (cycles - 2);
-            kd = dAverage / (cycles - 2);
-
-            return;
-        }
-
-        while ((micros() - microseconds) < loopInterval) {
-        }
-    }
-}*/

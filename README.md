@@ -28,7 +28,7 @@ void setup() {
 
     // Set the output range
     // These are the maximum and minimum possible output values of whatever you are
-    // using to control the system (analogWrite is 0 and 255, digitalWrite is 0 and 1)
+    // using to control the system (analogWrite is 0-255)
     tuner.setOutputRange(0, 255);
 
     // Set the Ziegler-Nichols tuning mode
@@ -49,17 +49,22 @@ void setup() {
         microseconds = micros();
 
         // Get input value here (temperature, encoder position, velocity, etc)
+        double input = doSomethingToGetInput();
 
+        // Call tunePID() with the input value
         double output = tuner.tunePID(input);
 
         // Set the output - tunePid() will return values within the range configured
-        // by setOutputRange(). Don't change the value or results will be incorrect.
+        // by setOutputRange(). Don't change the value or the tuning results will be
+        // incorrect.
+        doSomethingToSetOutput(output);
 
         // This loop must run at the same speed as the PID control loop being tuned
         while (micros() - microseconds < loopInterval) delayMicroseconds(1);
     }
 
     // Turn the output off here.
+    doSomethingToSetOutput(0);
 
     // Get PID gains - set your PID controller's gains to these
     double kp = tuner.getKp();
@@ -69,6 +74,6 @@ void setup() {
 
 void loop() {
 
-    ...
+    // ...
 }
 ```

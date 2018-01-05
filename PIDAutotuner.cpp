@@ -109,7 +109,7 @@ double PIDAutotuner::tunePID(double input) {
         // Formula given is Ku = 4d / πa
         // d is the amplitude of the output signal
         // a is the amplitude of the input signal
-        double ku = (4.0 * ((maxOutput - minOutput) / 2.0)) / (M_PI * (max - min) * 2.0);
+        double ku = (4.0 * ((maxOutput - minOutput) / 2.0)) / (M_PI * (max - min) / 2.0);
 
         // Calculate Tu (period of output oscillations)
         double tu = tLow + tHigh;
@@ -186,9 +186,9 @@ double PIDAutotuner::tunePID(double input) {
         output = false;
         outputValue = minOutput;
 
-        kp = pAverage / (cycles - 2);
-        ki = iAverage / (cycles - 2);
-        kd = dAverage / (cycles - 2);
+        kp = pAverage / (i - 1);
+        ki = iAverage / (i - 1);
+        kd = dAverage / (i - 1);
     }
 
     return outputValue;

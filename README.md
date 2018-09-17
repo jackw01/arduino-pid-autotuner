@@ -8,7 +8,7 @@ Automated PID tuning using Ziegler-Nichols/relay method on Arduino and compatibl
 This algorithm should work with all PID controllers and PID control libraries if it is properly configured.
 
 ## Example code
-```arduino
+```c
 #include <PIDAutotuner.h>
 
 void setup() {

@@ -2,14 +2,14 @@
 Automated PID tuning using Ziegler-Nichols/relay method on Arduino and compatible boards
 
 ## How does it work?
-`PIDAutotuner.h` and `PIDAutotuner.cpp` are fully commented to explain how the algorithm works.
+`pidautotuner.h` and `pidautotuner.cpp` are fully commented to explain how the algorithm works.
 
 ## What PID controller does this work with?
 This algorithm should work with all PID controllers and PID control libraries if it is properly configured.
 
 ## Example code
 ```c
-#include <PIDAutotuner.h>
+#include <pidautotuner.h>
 
 void setup() {
 
@@ -32,10 +32,10 @@ void setup() {
     tuner.setOutputRange(0, 255);
 
     // Set the Ziegler-Nichols tuning mode
-    // Set it to either PIDAutotuner::znModeBasicPID, PIDAutotuner::znModeLessOvershoot,
-    // or PIDAutotuner::znModeNoOvershoot. Test with znModeBasicPID first, but if there
+    // Set it to either PIDAutotuner::ZNModeBasicPID, PIDAutotuner::ZNModeLessOvershoot,
+    // or PIDAutotuner::ZNModeNoOvershoot. Test with ZNModeBasicPID first, but if there
     // is too much overshoot you can try the others.
-    tuner.setZNMode(PIDAutotuner::znModeBasicPID);
+    tuner.setZNMode(PIDAutotuner::ZNModeBasicPID);
 
     // This must be called immediately before the tuning loop
     tuner.startTuningLoop();

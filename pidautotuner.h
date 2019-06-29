@@ -14,7 +14,7 @@
 class PIDAutotuner {
 public:
   // Constants for Ziegler-Nichols tuning mode
-  static typedef enum {
+  typedef enum {
     ZNModeBasicPID,
     ZNModeLessOvershoot,
     ZNModeNoOvershoot
@@ -54,7 +54,7 @@ private:
   float targetInputValue = 0;
   float loopInterval = 0;
   float minOutput, maxOutput;
-  byte znMode = znModeBasicPID;
+  byte znMode = ZNModeBasicPID;
   int cycles = 10;
 
   // See startTuningLoop()

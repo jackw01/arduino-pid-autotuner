@@ -18,7 +18,7 @@ void PIDAutotuner::setLoopInterval(long interval) {
 }
 
 // Set output range
-void PIDAutotuner::setOutputRange(float min, float max) {ZNMode
+void PIDAutotuner::setOutputRange(float min, float max) {
   minOutput = min;
   maxOutput = max;
 }

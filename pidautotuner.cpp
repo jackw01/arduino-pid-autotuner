@@ -1,5 +1,5 @@
 // PID automated tuning (Ziegler-Nichols/relay method) for Arduino and compatible boards
-// Copyright (c) 2016-2018 jackw01
+// Copyright (c) 2016-2020 jackw01
 // This code is distrubuted under the MIT License, see LICENSE for details
 
 #include "pidautotuner.h"
@@ -34,21 +34,19 @@ void PIDAutotuner::setTuningCycles(int tuneCycles) {
 }
 
 // Initialize all variables before loop
-void PIDAutotuner::startTuningLoop() {
+void PIDAutotuner::startTuningLoop(unsigned long us) {
   i = 0; // Cycle counter
   output = true; // Current output state
   outputValue = maxOutput;
-  t1 = t2 = micros(); // Times used for calculating period
+  t1 = t2 = us; // Times used for calculating period
   microseconds = tHigh = tLow = 0; // More time variables
-  max = -1000000; // Max input
-  min = 1000000; // Min input
+  max = -1000000000000; // Max input
+  min = 1000000000000; // Min input
   pAverage = iAverage = dAverage = 0;
-
-  sei();
 }
 
 // Run one cycle of the loop
-float PIDAutotuner::tunePID(float input) {
+float PIDAutotuner::tunePID(float input, unsigned long us) {
   // Useful information on the algorithm used (Ziegler-Nichols method/Relay method)
   // http://www.processcontrolstuff.net/wp-content/uploads/2015/02/relay_autot-2.pdf
   // https://en.wikipedia.org/wiki/Ziegler%E2%80%93Nichols_method
@@ -67,19 +65,20 @@ float PIDAutotuner::tunePID(float input) {
   //      Ziegler-Nichols method
 
   // Calculate time delta
-  long prevMicroseconds = microseconds;
-  microseconds = micros();
+  //long prevMicroseconds = microseconds;
+  microseconds = us;
+  //float deltaT = microseconds - prevMicroseconds;
 
   // Calculate max and min
-  max = max(max, input);
-  min = min(min, input);
+  max = (max > input) ? max : input;
+  min = (min < input) ? min : input;
 
   // Output is on and input signal has risen to target
   if (output && input > targetInputValue) {
     // Turn output off, record current time as t1, calculate tHigh, and reset maximum
     output = false;
     outputValue = minOutput;
-    t1 = micros();
+    t1 = us;
     tHigh = t1 - t2;
     max = targetInputValue;
   }
@@ -89,7 +88,7 @@ float PIDAutotuner::tunePID(float input) {
     // Turn output on, record current time as t2, calculate tLow
     output = true;
     outputValue = maxOutput;
-    t2 = micros();
+    t2 = us;
     tLow = t2 - t1;
 
     // Calculate Ku (ultimate gain)

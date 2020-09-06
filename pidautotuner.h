@@ -54,7 +54,7 @@ private:
   float targetInputValue = 0;
   float loopInterval = 0;
   float minOutput, maxOutput;
-  byte znMode = ZNModeBasicPID;
+  byte znMode = ZNModeNoOvershoot;
   int cycles = 10;
 
   // See startTuningLoop()

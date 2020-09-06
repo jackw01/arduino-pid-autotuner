@@ -69,7 +69,6 @@ float PIDAutotuner::tunePID(float input) {
   // Calculate time delta
   long prevMicroseconds = microseconds;
   microseconds = micros();
-  float deltaT = microseconds - prevMicroseconds;
 
   // Calculate max and min
   max = max(max, input);
@@ -128,7 +127,7 @@ float PIDAutotuner::tunePID(float input) {
       kpConstant = 0.33;
       tiConstant = 0.5;
       tdConstant = 0.33;
-    } else if (znMode == ZNModeNoOvershoot) {
+    } else { // Default to No Overshoot mode as it is the safest
       kpConstant = 0.2;
       tiConstant = 0.5;
       tdConstant = 0.33;

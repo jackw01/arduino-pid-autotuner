@@ -33,8 +33,8 @@ void setup() {
 
     // Set the Ziegler-Nichols tuning mode
     // Set it to either PIDAutotuner::ZNModeBasicPID, PIDAutotuner::ZNModeLessOvershoot,
-    // or PIDAutotuner::ZNModeNoOvershoot. Test with ZNModeBasicPID first, but if there
-    // is too much overshoot you can try the others.
+    // or PIDAutotuner::ZNModeNoOvershoot. Defaults to ZNModeNoOvershoot as it is the
+    // safest option.
     tuner.setZNMode(PIDAutotuner::ZNModeBasicPID);
 
     // This must be called immediately before the tuning loop

@@ -2,13 +2,14 @@
 // Copyright (c) 2016-2020 jackw01
 // This code is distrubuted under the MIT License, see LICENSE for details
 
+#include "Arduino.h"
 #include "pidautotuner.h"
 
 PIDAutotuner::PIDAutotuner() {
 }
 
 // Set target input for tuning
-void PIDAutotuner::setTargetInputValue(float target) {
+void PIDAutotuner::setTargetValue(float target) {
   targetInputValue = target;
 }
 
@@ -40,13 +41,13 @@ void PIDAutotuner::startTuningLoop(unsigned long us) {
   outputValue = maxOutput;
   t1 = t2 = us; // Times used for calculating period
   microseconds = tHigh = tLow = 0; // More time variables
-  max = -1000000000000; // Max input
-  min = 1000000000000; // Min input
+  maxInput = -1000000000000; // Max input
+  minInput = 1000000000000; // Min input
   pAverage = iAverage = dAverage = 0;
 }
 
-// Run one cycle of the loop
-float PIDAutotuner::tunePID(float input, unsigned long us) {
+// Run tuning cycle of the loop
+float PIDAutotuner::tune(float input, unsigned long us) {
   // Useful information on the algorithm used (Ziegler-Nichols method/Relay method)
   // http://www.processcontrolstuff.net/wp-content/uploads/2015/02/relay_autot-2.pdf
   // https://en.wikipedia.org/wiki/Ziegler%E2%80%93Nichols_method
@@ -70,8 +71,8 @@ float PIDAutotuner::tunePID(float input, unsigned long us) {
   //float deltaT = microseconds - prevMicroseconds;
 
   // Calculate max and min
-  max = (max > input) ? max : input;
-  min = (min < input) ? min : input;
+  maxInput = (maxInput > input) ? maxInput : input;
+  minInput = (minInput < input) ? minInput : input;
 
   // Output is on and input signal has risen to target
   if (output && input > targetInputValue) {
@@ -80,7 +81,7 @@ float PIDAutotuner::tunePID(float input, unsigned long us) {
     outputValue = minOutput;
     t1 = us;
     tHigh = t1 - t2;
-    max = targetInputValue;
+    maxInput = targetInputValue;
   }
 
   // Output is off and input signal has dropped to target
@@ -95,7 +96,7 @@ float PIDAutotuner::tunePID(float input, unsigned long us) {
     // Formula given is Ku = 4d / πa
     // d is the amplitude of the output signal
     // a is the amplitude of the input signal
-    float ku = (4.0 * ((maxOutput - minOutput) / 2.0)) / (M_PI * (max - min) / 2.0);
+    float ku = (4.0 * ((maxOutput - minOutput) / 2.0)) / (M_PI * (maxInput - minInput) / 2.0);
 
     // Calculate Tu (period of output oscillations)
     float tu = tLow + tHigh;
@@ -145,10 +146,10 @@ float PIDAutotuner::tunePID(float input, unsigned long us) {
     }
 
     // Reset minimum
-    min = targetInputValue;
+    minInput = targetInputValue;
 
     // Increment cycle count
-    i ++;
+    i++;
   }
 
   // If loop is done, disable output and calculate averages
@@ -161,6 +162,18 @@ float PIDAutotuner::tunePID(float input, unsigned long us) {
   }
 
   return outputValue;
+}
+
+// Run PID algorithm
+float PIDAutotuner::run(float _input, unsigned long us)
+{
+    float _error = targetInputValue - _input;
+    _integral += (_error + _previousError) / 2.0 * loopInterval / 1000000.0;
+    float _dError = (_error - _previousError) / loopInterval / 1000000.0;
+    _previousError = _error;
+    float PID = (kp * _error) + (ki * _integral) + (kd * _dError);
+    float PIDoutput = constrain(PID, minOutput, maxOutput);
+    return PIDoutput;
 }
 
 // Get PID constants after tuning

@@ -27,7 +27,7 @@ class PIDAutotuner {
     // outputRange: min and max values of the output that can be used to control the system (0, 255 for analogWrite)
     // znMode: Ziegler-Nichols tuning mode (znModeBasicPID, znModeLessOvershoot, znModeNoOvershoot)
     // tuningCycles: number of cycles that the tuning runs for (optional, default is 10)
-    void setTargetInputValue(float target);
+    void setTargetValue(float target);
     void setLoopInterval(long interval);
     void setOutputRange(float min, float max);
     void setZNMode(ZNMode zn);
@@ -39,7 +39,8 @@ class PIDAutotuner {
     // Automatically tune PID
     // This function must be run in a loop at the same speed as the PID loop being tuned
     // See README for more details - https://github.com/jackw01/arduino-pid-autotuner/blob/master/README.md
-    float tunePID(float input, unsigned long us);
+    float tune(float input, unsigned long us);
+    float run(float input, unsigned long us);
 
     // Get results of most recent tuning
     float getKp();
@@ -60,10 +61,13 @@ class PIDAutotuner {
     bool output;
     float outputValue;
     long microseconds, t1, t2, tHigh, tLow;
-    float max, min;
+    float maxInput, minInput;
     float pAverage, iAverage, dAverage;
 
     float kp, ki, kd;
+
+    float _previousError = 0;
+    float _integral = 0;
 };
 
 #endif

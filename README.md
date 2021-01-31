@@ -3,11 +3,13 @@ Automated PID tuning using Ziegler-Nichols/relay method for embedded systems.
 
 Originally designed for Arduino and compatible boards, but does not rely on the Arduino standard library.
 
+**This is an experimental project and is not guaranteed to work in every use case. If you don't know what this code is intended to do, you probably don't need to use it. This project is strictly for _tuning_ PID control loops and does not implement the PID control algorithm itself.**
+
 ## How does it work?
 `pidautotuner.h` and `pidautotuner.cpp` are fully commented to explain how the algorithm works.
 
 ## What PID controller does this work with?
-This algorithm should work with all PID control libraries if it is properly configured.
+This algorithm should work with any implementation of PID control if it is properly configured.
 
 ## Example code (Arduino)
 ```c

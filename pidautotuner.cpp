@@ -172,3 +172,8 @@ float PIDAutotuner::getKd() { return kd; };
 bool PIDAutotuner::isFinished() {
   return (i >= cycles);
 }
+
+// return number of tuning cycle
+int PIDAutotuner::getCycle() {
+  return i;
+}

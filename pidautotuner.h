@@ -48,6 +48,8 @@ class PIDAutotuner {
 
     bool isFinished(); // Is the tuning finished?
 
+    int getCycle(); // return tuning cycle
+
   private:
     float targetInputValue = 0;
     float loopInterval = 0;

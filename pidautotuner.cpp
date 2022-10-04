@@ -155,9 +155,9 @@ float PIDAutotuner::tunePID(float input, unsigned long us) {
   if (i >= cycles) {
     output = false;
     outputValue = minOutput;
-    kp = pAverage / (i - 1);
-    ki = iAverage / (i - 1);
-    kd = dAverage / (i - 1);
+    kp = pAverage / (i - 2);
+    ki = iAverage / (i - 2);
+    kd = dAverage / (i - 2);
   }
 
   return outputValue;
